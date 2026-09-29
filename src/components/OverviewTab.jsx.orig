@@ -1,0 +1,690 @@
+import { useState } from 'react';
+import { 
+  Eye, 
+  EyeOff, 
+  ArrowUpRight, 
+  ArrowDownLeft, 
+  TrendingUp, 
+  CreditCard, 
+  Plus, 
+  ChevronRight, 
+  Send, 
+  Receipt, 
+  QrCode, 
+  Lock, 
+  Unlock, 
+  ShieldCheck, 
+  Copy, 
+  Check, 
+  ShoppingBag, 
+  Tv, 
+  UtensilsCrossed, 
+  Car 
+} from 'lucide-react';
+import { formatCurrency, copyToClipboard } from '../utils/formatters';
+import { CASHFLOW_DATA } from '../data/initialData';
+
+export default function OverviewTab({
+  totalBalance,
+  showBalance,
+  setShowBalance,
+  currency,
+  transactions,
+  contacts,
+  cards,
+  onOpenSendMoney,
+  onOpenSendMoneyWithContact,
+  onOpenAddTransaction,
+  onOpenAddCard,
+  onSelectTransaction,
+  setActiveTab,
+  onToggleFreezeCard,
+  onContributeSavings,
+  user
+}) {
+  const [chartPeriod, setChartPeriod] = useState('Week');
+  const [hoveredChartPoint, setHoveredChartPoint] = useState(null);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [copiedCard, setCopiedCard] = useState(false);
+
+  // Active featured card (usually primary debit or first card)
+  const featuredCard = cards[0] || {
+    id: 'card-1',
+    name: 'Emerald Everyday',
+    number: '4829 8812 3901 4829',
+    last4: '4829',
+    cvv: '842',
+    expiry: '08/29',
+    holder: 'ALEX CARTER',
+    isFrozen: false,
+    color: 'emerald'
+  };
+
+  const handleCopyCard = async () => {
+    await copyToClipboard(featuredCard.number);
+    setCopiedCard(true);
+    setTimeout(() => setCopiedCard(false), 2000);
+  };
+
+  // Transaction category icons
+  const getTxIcon = (category) => {
+    switch (category) {
+      case 'Groceries':
+        return <ShoppingBag size={16} className="text-emerald-600 dark:text-[#b4ea6c]" />;
+      case 'Entertainment':
+        return <Tv size={16} className="text-rose-500" />;
+      case 'Restaurants':
+      case 'Dining':
+        return <UtensilsCrossed size={16} className="text-amber-500" />;
+      case 'Income':
+        return <ArrowDownLeft size={16} className="text-emerald-500" />;
+      case 'Transport':
+        return <Car size={16} className="text-sky-500" />;
+      default:
+        return <Receipt size={16} className="text-purple-500" />;
+    }
+  };
+
+  // Dynamic Cash Flow Chart calculations
+  const cashflow = CASHFLOW_DATA[chartPeriod] || CASHFLOW_DATA.Week;
+  const chartHeight = 110;
+  const chartWidth = 420;
+  const paddingX = 20;
+  const paddingY = 15;
+  const plotWidth = chartWidth - paddingX * 2;
+  const plotHeight = chartHeight - paddingY * 2;
+
+  const pointsCount = cashflow.points.length;
+  const maxVal = Math.max(...cashflow.points, 100);
+  const minVal = Math.min(...cashflow.points, 0);
+
+  const coordinates = cashflow.points.map((val, idx) => {
+    const x = paddingX + (idx / (pointsCount - 1)) * plotWidth;
+    const y = chartHeight - paddingY - ((val - minVal) / (maxVal - minVal || 1)) * plotHeight;
+    return { x, y, val, label: cashflow.labels[idx] };
+  });
+
+  // Build smooth bezier path
+  let pathD = '';
+  if (coordinates.length > 0) {
+    pathD = `M ${coordinates[0].x} ${coordinates[0].y}`;
+    for (let i = 0; i < coordinates.length - 1; i++) {
+      const curr = coordinates[i];
+      const next = coordinates[i + 1];
+      const midX = (curr.x + next.x) / 2;
+      pathD += ` C ${midX} ${curr.y}, ${midX} ${next.y}, ${next.x} ${next.y}`;
+    }
+  }
+
+  const areaD = `${pathD} L ${coordinates[coordinates.length - 1]?.x || 0} ${chartHeight} L ${coordinates[0]?.x || 0} ${chartHeight} Z`;
+
+  return (
+    <div className="space-y-6 animate-slide-up pb-12">
+      {/* Welcome Greeting Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-400 tracking-wider uppercase mb-1">
+            <span>Monday, September 29, 2026</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+            <span className="text-zinc-500 dark:text-zinc-400 font-normal">Real-Time Sync</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span>Good morning, {user?.name?.split(' ')[0] || 'Alex'}</span>
+            <span className="text-amber-400">☀️</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-emerald-200/70 mt-0.5">
+            Your portfolio grew by <span className="font-semibold text-emerald-600 dark:text-[#b4ea6c]">+8.2%</span> this month. All systems operational.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onOpenAddTransaction()}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-emerald-800/40 bg-white dark:bg-[#142620] hover:bg-zinc-50 dark:hover:bg-white/5 text-zinc-700 dark:text-zinc-200 text-xs font-bold transition-all shadow-xs"
+          >
+            <Plus size={15} />
+            <span>Add Transaction</span>
+          </button>
+
+          <button
+            onClick={() => onOpenSendMoney()}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#17483c] hover:bg-[#12392f] dark:bg-[#b4ea6c] dark:hover:bg-[#cbf58b] text-white dark:text-[#112d26] text-xs font-bold transition-all shadow-md active:scale-98"
+          >
+            <Send size={14} />
+            <span>Send Money</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Top Row: Total Balance Card & Cash Flow Analytics Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Total Balance Card (5 cols on lg) */}
+        <div className="lg:col-span-5 relative rounded-3xl p-6 sm:p-7 overflow-hidden text-white flex flex-col justify-between shadow-xl card-theme-emerald min-h-[260px]">
+          {/* Decorative glowing background rings */}
+          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full border border-emerald-300/15 pointer-events-none" />
+          <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full border border-emerald-300/10 pointer-events-none" />
+
+          {/* Top header */}
+          <div className="relative z-10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#b4ea6c] ring-4 ring-emerald-500/20" />
+              <span className="text-[11px] font-bold tracking-widest text-emerald-200 uppercase">
+                Total Available Net Worth
+              </span>
+            </div>
+
+            <button
+              onClick={() => setShowBalance(!showBalance)}
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-emerald-100 transition-colors"
+              aria-label={showBalance ? 'Hide balance' : 'Show balance'}
+              title={showBalance ? 'Hide balance numbers' : 'Show balance numbers'}
+            >
+              {showBalance ? <Eye size={16} /> : <EyeOff size={16} />}
+            </button>
+          </div>
+
+          {/* Main Balance Display */}
+          <div className="relative z-10 my-4">
+            <div className="text-3xl sm:text-4xl font-heading font-extrabold tracking-tight">
+              {showBalance ? formatCurrency(totalBalance, currency) : '••••••••••••'}
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#b4ea6c]/20 text-[#b4ea6c]">
+                <TrendingUp size={12} />
+                <span>+8.2%</span>
+              </span>
+              <span className="text-xs text-emerald-200/70">+$1,840.20 vs last month</span>
+            </div>
+          </div>
+
+          {/* Footer info & Quick Actions */}
+          <div className="relative z-10 pt-4 border-t border-emerald-400/20 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#b4ea6c] text-[#112d26] font-extrabold text-sm flex items-center justify-center font-heading">
+                A
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">Everyday Checking</p>
+                <p className="text-[10px] text-emerald-300/70 font-mono">•••• 4829</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('Cards')}
+                className="text-xs font-bold text-[#b4ea6c] hover:text-white flex items-center gap-1 transition-colors"
+              >
+                <span>View Cards</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Cash Flow Interactive Chart Card (7 cols on lg) */}
+        <div className="lg:col-span-7 glass-panel p-6 flex flex-col justify-between min-h-[260px]">
+          {/* Header & Toggle */}
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-[10px] font-bold text-zinc-400 dark:text-emerald-400/70 tracking-wider uppercase">
+                Cash Flow Trajectory
+              </p>
+              <h3 className="font-heading font-bold text-base text-zinc-900 dark:text-white">
+                Spending & Liquidity
+              </h3>
+            </div>
+
+            {/* Period Switcher */}
+            <div className="flex items-center p-1 rounded-xl bg-zinc-100 dark:bg-[#0c1a16] border border-zinc-200 dark:border-emerald-900/40 text-xs font-semibold">
+              {['Week', 'Month', 'Year'].map((period) => (
+                <button
+                  key={period}
+                  onClick={() => {
+                    setChartPeriod(period);
+                    setHoveredChartPoint(null);
+                  }}
+                  className={`px-3 py-1 rounded-lg transition-all ${
+                    chartPeriod === period
+                      ? 'bg-white dark:bg-emerald-950 text-zinc-900 dark:text-[#b4ea6c] shadow-xs'
+                      : 'text-zinc-500 dark:text-emerald-400/70 hover:text-zinc-800'
+                  }`}
+                >
+                  {period}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Amount Summary */}
+          <div className="flex items-baseline gap-3 mb-2">
+            <span className="text-2xl font-heading font-extrabold text-zinc-900 dark:text-white">
+              {formatCurrency(cashflow.totalSpent, currency)}
+            </span>
+            <span className="text-xs text-zinc-400 dark:text-emerald-400/70">
+              total spent this {chartPeriod.toLowerCase()}
+            </span>
+            <span className="ml-auto text-xs font-semibold text-emerald-600 dark:text-[#b4ea6c]">
+              Net Surplus: {formatCurrency(cashflow.totalIncome - cashflow.totalSpent, currency)}
+            </span>
+          </div>
+
+          {/* Dynamic SVG Curve Chart with Hover Tooltip */}
+          <div className="relative w-full h-32 pt-2">
+            <svg
+              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+              className="w-full h-full overflow-visible"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="cashflowGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#b4ea6c" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#b4ea6c" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+
+              {/* Gridlines */}
+              <line x1="0" y1="20" x2={chartWidth} y2="20" stroke="currentColor" className="text-zinc-200 dark:text-emerald-900/30" strokeDasharray="3 3" />
+              <line x1="0" y1="60" x2={chartWidth} y2="60" stroke="currentColor" className="text-zinc-200 dark:text-emerald-900/30" strokeDasharray="3 3" />
+              <line x1="0" y1="100" x2={chartWidth} y2="100" stroke="currentColor" className="text-zinc-200 dark:text-emerald-900/30" strokeDasharray="3 3" />
+
+              {/* Area gradient */}
+              <path d={areaD} fill="url(#cashflowGrad)" />
+
+              {/* Stroke line */}
+              <path
+                d={pathD}
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* Interactive Data Points */}
+              {coordinates.map((pt, idx) => (
+                <circle
+                  key={idx}
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={hoveredChartPoint?.idx === idx ? 6 : 3.5}
+                  className="fill-white dark:fill-[#12221d] stroke-[#10b981] dark:stroke-[#b4ea6c] cursor-pointer transition-all hover:scale-125"
+                  strokeWidth="2.5"
+                  onMouseEnter={() => setHoveredChartPoint({ ...pt, idx })}
+                />
+              ))}
+            </svg>
+
+            {/* Hover Tooltip */}
+            {hoveredChartPoint && (
+              <div 
+                className="absolute z-20 -top-8 px-2.5 py-1 rounded-lg bg-[#112d26] text-white text-[11px] font-bold shadow-lg pointer-events-none transform -translate-x-1/2 flex items-center gap-1.5"
+                style={{
+                  left: `${(hoveredChartPoint.x / chartWidth) * 100}%`
+                }}
+              >
+                <span>{hoveredChartPoint.label}:</span>
+                <span className="text-[#b4ea6c]">
+                  {formatCurrency((hoveredChartPoint.val * 24.5) + 120, currency)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* X-axis labels */}
+          <div className="flex justify-between px-2 pt-2 border-t border-zinc-100 dark:border-emerald-900/30 text-[10px] font-semibold text-zinc-400 dark:text-emerald-400/60">
+            {cashflow.labels.map((lbl) => (
+              <span key={lbl}>{lbl}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2: 4 Quick Financial Statistics Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Income Card */}
+        <div className="glass-panel p-4 flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-[#b4ea6c] flex items-center justify-center shrink-0">
+            <ArrowDownLeft size={20} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-zinc-400 dark:text-emerald-400/70">Income this Month</p>
+            <p className="text-base font-heading font-extrabold text-zinc-900 dark:text-white">
+              {formatCurrency(6420.00, currency)}
+            </p>
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-[#b4ea6c]">+12.8% vs Aug</span>
+          </div>
+        </div>
+
+        {/* Expenses Card */}
+        <div className="glass-panel p-4 flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+            <ArrowUpRight size={20} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-zinc-400 dark:text-emerald-400/70">Spent this Month</p>
+            <p className="text-base font-heading font-extrabold text-zinc-900 dark:text-white">
+              {formatCurrency(2840.50, currency)}
+            </p>
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-[#b4ea6c]">-4.6% budget saved</span>
+          </div>
+        </div>
+
+        {/* Savings Goal Card with interactive Contribute */}
+        <div className="glass-panel p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-medium text-zinc-400 dark:text-emerald-400/70">Emergency Goal</p>
+            <button
+              onClick={() => onContributeSavings(250)}
+              className="text-[10px] font-bold text-emerald-600 dark:text-[#b4ea6c] hover:underline"
+              title="Add $250 to savings"
+            >
+              + Contribute
+            </button>
+          </div>
+          <div className="my-1">
+            <span className="text-sm font-heading font-extrabold text-zinc-900 dark:text-white">
+              {formatCurrency(8250, currency)}
+            </span>
+            <span className="text-[10px] text-zinc-400 dark:text-emerald-400/60 ml-1">/ $10k</span>
+          </div>
+          <div className="w-full h-1.5 rounded-full bg-zinc-100 dark:bg-emerald-950 overflow-hidden">
+            <div className="h-full bg-[#10b981] dark:bg-[#b4ea6c] rounded-full transition-all" style={{ width: '82.5%' }} />
+          </div>
+        </div>
+
+        {/* Credit Score Card */}
+        <div className="glass-panel p-4 flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <ShieldCheck size={20} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-zinc-400 dark:text-emerald-400/70">Credit Health</p>
+            <p className="text-base font-heading font-extrabold text-zinc-900 dark:text-white">
+              785 <span className="text-[10px] text-emerald-600 dark:text-[#b4ea6c] font-normal">Tier 1</span>
+            </p>
+            <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">Excellent Range</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3: Lower Grid (Transactions & Quick Transfer on Left; Interactive Card & Quick Actions on Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Left Column (7 cols) */}
+        <div className="lg:col-span-7 space-y-5">
+          {/* Recent Transactions Panel */}
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-[10px] font-bold text-zinc-400 dark:text-emerald-400/70 tracking-wider uppercase">
+                  Activity Feed
+                </p>
+                <h3 className="font-heading font-bold text-base text-zinc-900 dark:text-white">
+                  Recent Transactions
+                </h3>
+              </div>
+
+              <button
+                onClick={() => setActiveTab('Transactions')}
+                className="text-xs font-bold text-emerald-600 dark:text-[#b4ea6c] hover:underline flex items-center gap-1"
+              >
+                <span>View all ({transactions.length})</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+
+            <div className="divide-y divide-zinc-100 dark:divide-emerald-900/20">
+              {transactions.slice(0, 5).map((tx) => (
+                <div
+                  key={tx.id}
+                  onClick={() => onSelectTransaction(tx)}
+                  className="py-3 flex items-center justify-between gap-3 cursor-pointer group hover:bg-zinc-50/80 dark:hover:bg-white/5 px-2 -mx-2 rounded-xl transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-[#152a22] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      {getTxIcon(tx.category)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-white truncate">
+                        {tx.merchant}
+                      </p>
+                      <p className="text-[11px] text-zinc-400 dark:text-emerald-400/60 truncate">
+                        {tx.category} • {tx.displayDate || tx.date}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className={`text-xs sm:text-sm font-heading font-extrabold ${
+                      tx.amount > 0
+                        ? 'text-emerald-600 dark:text-[#b4ea6c]'
+                        : 'text-zinc-900 dark:text-white'
+                    }`}>
+                      {formatCurrency(tx.amount, currency)}
+                    </p>
+                    <span className="text-[10px] text-zinc-400 dark:text-emerald-400/50">
+                      {tx.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Transfer Contacts Panel */}
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-[10px] font-bold text-zinc-400 dark:text-emerald-400/70 tracking-wider uppercase">
+                  One-Tap Transfers
+                </p>
+                <h3 className="font-heading font-bold text-base text-zinc-900 dark:text-white">
+                  Favorite Contacts
+                </h3>
+              </div>
+              <button
+                onClick={() => onOpenSendMoney()}
+                className="text-xs font-bold text-emerald-600 dark:text-[#b4ea6c] hover:underline"
+              >
+                + New Contact
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+              {contacts.map((contact) => (
+                <button
+                  key={contact.id}
+                  onClick={() => onOpenSendMoneyWithContact(contact)}
+                  className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-zinc-200 dark:border-emerald-900/40 hover:border-emerald-500 dark:hover:border-[#b4ea6c] hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition-all min-w-[80px] group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 text-white font-bold text-sm flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                    {contact.initials}
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-100 truncate w-full text-center">
+                    {contact.name.split(' ')[0]}
+                  </span>
+                  <span className="text-[10px] text-zinc-400 truncate">
+                    {contact.bank.split(' ')[0]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (5 cols) */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* Featured 3D Interactive Card Panel */}
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-[10px] font-bold text-zinc-400 dark:text-emerald-400/70 tracking-wider uppercase">
+                  Security & Wallet
+                </p>
+                <h3 className="font-heading font-bold text-base text-zinc-900 dark:text-white">
+                  Active Card
+                </h3>
+              </div>
+
+              <button
+                onClick={() => setIsFlipped(!isFlipped)}
+                className="text-xs font-bold text-emerald-600 dark:text-[#b4ea6c] hover:underline flex items-center gap-1"
+              >
+                <span>{isFlipped ? 'View Front' : 'Flip for CVV'}</span>
+              </button>
+            </div>
+
+            {/* 3D Flip Card Container */}
+            <div className="card-perspective h-48 w-full cursor-pointer my-2" onClick={() => setIsFlipped(!isFlipped)}>
+              <div className={`card-inner ${isFlipped ? 'flipped' : ''}`}>
+                {/* Front Face */}
+                <div className={`card-face p-5 flex flex-col justify-between shadow-xl card-theme-${featuredCard.color}`}>
+                  <div className="card-shimmer" />
+                  <div className="flex items-start justify-between relative z-10">
+                    <div>
+                      <span className="font-heading font-extrabold text-sm uppercase text-white/90">Aura</span>
+                      <span className="ml-2 text-[10px] font-mono px-2 py-0.5 rounded bg-white/10 text-white">
+                        {featuredCard.type}
+                      </span>
+                    </div>
+                    <span className="text-xs font-mono font-bold tracking-wider text-white/80">
+                      {featuredCard.network}
+                    </span>
+                  </div>
+
+                  <div className="my-1 flex items-center gap-3 relative z-10">
+                    <div className="emv-chip" />
+                    <span className="text-[10px] text-white/60 font-mono">))) Contactless</span>
+                  </div>
+
+                  <div className="font-mono-num font-semibold text-base tracking-widest text-white/95 relative z-10">
+                    {featuredCard.number}
+                  </div>
+
+                  <div className="flex items-end justify-between pt-2 border-t border-white/15 relative z-10 text-xs">
+                    <div>
+                      <span className="text-[8px] uppercase tracking-wider block text-white/60">Cardholder</span>
+                      <span className="font-bold text-xs tracking-wider text-white">{featuredCard.holder}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[8px] uppercase tracking-wider block text-white/60">Expires</span>
+                      <span className="font-mono text-xs text-white">{featuredCard.expiry}</span>
+                    </div>
+                  </div>
+
+                  {featuredCard.isFrozen && (
+                    <div className="absolute inset-0 bg-[#0d221c]/90 backdrop-blur-xs flex items-center justify-center gap-2 text-white font-bold text-xs z-20">
+                      <Lock size={18} className="text-rose-400" />
+                      <span>CARD FROZEN</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Back Face */}
+                <div className={`card-face card-face-back p-5 flex flex-col justify-between shadow-xl card-theme-${featuredCard.color}`}>
+                  <div className="w-full h-8 bg-black/80 -mx-5 mt-2" />
+                  <div className="my-2">
+                    <div className="flex items-center justify-end bg-white/90 px-3 py-1.5 rounded text-zinc-900 font-mono text-xs font-bold">
+                      <span className="text-[9px] text-zinc-500 mr-2">CVV / CVC:</span>
+                      <span className="tracking-widest">{featuredCard.cvv}</span>
+                    </div>
+                    <p className="text-[9px] text-white/60 mt-2 text-right">
+                      Authorized Signature • 24/7 Concierge: +1 (800) 555-AURA
+                    </p>
+                  </div>
+                  <div className="text-[8px] text-white/50 tracking-wider">
+                    Issued by Aura Bank N.A. Member FDIC.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card Controls */}
+            <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-emerald-900/30">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopyCard}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-emerald-900/40 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors"
+                >
+                  {copiedCard ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                  <span>{copiedCard ? 'Copied' : 'Copy Number'}</span>
+                </button>
+
+                <button
+                  onClick={() => onToggleFreezeCard(featuredCard.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    featuredCard.isFrozen
+                      ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
+                      : 'border border-zinc-200 dark:border-emerald-900/40 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5'
+                  }`}
+                >
+                  {featuredCard.isFrozen ? <Unlock size={13} /> : <Lock size={13} />}
+                  <span>{featuredCard.isFrozen ? 'Unfreeze' : 'Freeze Card'}</span>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setActiveTab('Cards')}
+                className="text-xs font-bold text-emerald-600 dark:text-[#b4ea6c] hover:underline"
+              >
+                Manage Limits →
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Actions Grid */}
+          <div className="glass-panel p-6">
+            <h3 className="font-heading font-bold text-sm text-zinc-900 dark:text-white mb-3">
+              Instant Banking Operations
+            </h3>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => onOpenSendMoney()}
+                className="p-3.5 rounded-2xl border border-zinc-200 dark:border-emerald-900/40 hover:border-emerald-500 dark:hover:border-[#b4ea6c] bg-zinc-50/50 dark:bg-[#0c1a16] text-left hover:scale-[1.02] transition-all group"
+              >
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-[#b4ea6c] flex items-center justify-center mb-2">
+                  <Send size={16} />
+                </div>
+                <p className="text-xs font-bold text-zinc-900 dark:text-white">Send Money</p>
+                <p className="text-[10px] text-zinc-400">0% fee instant transfer</p>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('Payments')}
+                className="p-3.5 rounded-2xl border border-zinc-200 dark:border-emerald-900/40 hover:border-emerald-500 dark:hover:border-[#b4ea6c] bg-zinc-50/50 dark:bg-[#0c1a16] text-left hover:scale-[1.02] transition-all group"
+              >
+                <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-2">
+                  <Receipt size={16} />
+                </div>
+                <p className="text-xs font-bold text-zinc-900 dark:text-white">Pay Bills</p>
+                <p className="text-[10px] text-zinc-400">Utilities & Fiber</p>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('Payments')}
+                className="p-3.5 rounded-2xl border border-zinc-200 dark:border-emerald-900/40 hover:border-emerald-500 dark:hover:border-[#b4ea6c] bg-zinc-50/50 dark:bg-[#0c1a16] text-left hover:scale-[1.02] transition-all group"
+              >
+                <div className="w-8 h-8 rounded-xl bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-sky-400 flex items-center justify-center mb-2">
+                  <QrCode size={16} />
+                </div>
+                <p className="text-xs font-bold text-zinc-900 dark:text-white">Request Money</p>
+                <p className="text-[10px] text-zinc-400">QR Code & Pay Link</p>
+              </button>
+
+              <button
+                onClick={() => onOpenAddCard()}
+                className="p-3.5 rounded-2xl border border-zinc-200 dark:border-emerald-900/40 hover:border-emerald-500 dark:hover:border-[#b4ea6c] bg-zinc-50/50 dark:bg-[#0c1a16] text-left hover:scale-[1.02] transition-all group"
+              >
+                <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-2">
+                  <CreditCard size={16} />
+                </div>
+                <p className="text-xs font-bold text-zinc-900 dark:text-white">New Card</p>
+                <p className="text-[10px] text-zinc-400">Virtual or Physical</p>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
