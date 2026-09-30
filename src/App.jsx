@@ -299,7 +299,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-main)] transition-colors">
+    <div className="min-h-screen bg-(--bg-primary) text-(--text-main) transition-colors">
       {/* Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}

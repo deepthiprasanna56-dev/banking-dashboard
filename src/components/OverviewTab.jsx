@@ -171,7 +171,7 @@ export default function OverviewTab({
       {/* Top Row: Total Balance Card & Cash Flow Analytics Card */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Total Balance Card (5 cols on lg) */}
-        <div className="lg:col-span-5 relative rounded-3xl p-6 sm:p-7 overflow-hidden text-white flex flex-col justify-between shadow-xl card-theme-emerald min-h-[260px]">
+        <div className="lg:col-span-5 relative rounded-3xl p-6 sm:p-7 overflow-hidden text-white flex flex-col justify-between shadow-xl card-theme-emerald min-h-65">
           {/* Decorative glowing background rings */}
           <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full border border-emerald-300/15 pointer-events-none" />
           <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full border border-emerald-300/10 pointer-events-none" />
@@ -234,7 +234,7 @@ export default function OverviewTab({
         </div>
 
         {/* Cash Flow Interactive Chart Card (7 cols on lg) */}
-        <div className="lg:col-span-7 glass-panel p-6 flex flex-col justify-between min-h-[260px]">
+        <div className="lg:col-span-7 glass-panel p-6 flex flex-col justify-between min-h-65">
           {/* Header & Toggle */}
           <div className="flex items-center justify-between mb-2">
             <div>
@@ -506,9 +506,9 @@ export default function OverviewTab({
                 <button
                   key={contact.id}
                   onClick={() => onOpenSendMoneyWithContact(contact)}
-                  className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-zinc-200 dark:border-emerald-900/40 hover:border-emerald-500 dark:hover:border-[#b4ea6c] hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition-all min-w-[80px] group"
+                  className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-zinc-200 dark:border-emerald-900/40 hover:border-emerald-500 dark:hover:border-[#b4ea6c] hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition-all min-w-20 group"
                 >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 text-white font-bold text-sm flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 rounded-full bg-linear-to-tr from-emerald-600 to-teal-400 text-white font-bold text-sm flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                     {contact.initials}
                   </div>
                   <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-100 truncate w-full text-center">
